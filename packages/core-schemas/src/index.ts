@@ -20,6 +20,10 @@ export * from "./mcp/index.js"
 // Keyboard input schemas
 export * from "./keyboard/index.js"
 
+// Orchestration schemas
+export * from "./orchestration/index.js"
+
+
 // Theme schemas
 export * from "./theme/index.js"
 

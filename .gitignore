@@ -23,6 +23,7 @@ bin-unpacked/
 
 # Docs
 docs/_site/
+P_DATA
 
 # Dotenv
 .env
