@@ -371,7 +371,12 @@ export class MessageRouter {
 			},
 		}
 
-		await this.processHandler.sendMessage(agent.sessionId, {
+		const sessionId = agent.sessionId
+		if (!sessionId) {
+			return
+		}
+
+		await this.processHandler.sendMessage(sessionId, {
 			type: "agentMessage",
 			message: truncatedMessage,
 		})

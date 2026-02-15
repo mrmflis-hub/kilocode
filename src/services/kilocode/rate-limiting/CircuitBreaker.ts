@@ -1,11 +1,6 @@
 // kilocode_change - new file
 import { EventEmitter } from "events"
-import {
-	CircuitState,
-	CircuitBreakerStatus,
-	RateLimitEvent,
-	RateLimitEventType,
-} from "@kilocode/core-schemas/orchestration"
+import { CircuitState, CircuitBreakerStatus, RateLimitEvent, RateLimitEventType } from "@kilocode/core-schemas"
 import { CircuitBreakerConfig, RateLimitEventHandler } from "./types"
 
 /**
@@ -63,6 +58,8 @@ export class CircuitBreaker extends EventEmitter {
 				return false
 			case "half-open":
 				return true
+			default:
+				return false
 		}
 	}
 

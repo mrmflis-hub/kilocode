@@ -11,7 +11,7 @@ import {
 	RateLimitEventType,
 	CostEstimate,
 	BudgetStatus,
-} from "@kilocode/core-schemas/orchestration"
+} from "@kilocode/core-schemas"
 import {
 	RateLimitingManagerConfig,
 	ProviderRateLimitConfig,

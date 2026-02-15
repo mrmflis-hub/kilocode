@@ -323,5 +323,4 @@ export function getAllCategories(): RoleCategory[] {
 	return ["coordination", "planning", "implementation", "review", "documentation", "testing"]
 }
 
-// Export for internal use
-export type { OrchestratorRoleDefinition }
+// Export for internal use - already exported via interface declaration above

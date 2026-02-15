@@ -1,11 +1,6 @@
 // kilocode_change - new file
 import { EventEmitter } from "events"
-import {
-	QueuedRequest,
-	RequestPriority,
-	RateLimitEvent,
-	RateLimitEventType,
-} from "@kilocode/core-schemas/orchestration"
+import { QueuedRequest, RequestPriority, RateLimitEvent, RateLimitEventType } from "@kilocode/core-schemas"
 import { RequestQueueConfig, RateLimitEventHandler } from "./types"
 
 /**

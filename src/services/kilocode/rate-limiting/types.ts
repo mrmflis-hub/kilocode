@@ -10,10 +10,10 @@ import {
 	RateLimitEvent,
 	CostEstimate,
 	BudgetStatus,
-} from "@kilocode/core-schemas/orchestration"
+} from "@kilocode/core-schemas"
 
 // Re-export types from core-schemas
-export {
+export type {
 	RequestPriority,
 	CircuitState,
 	RateLimitInfo,
@@ -94,13 +94,13 @@ export type RateLimitEventHandler = (event: RateLimitEvent) => void
  */
 export interface CircuitBreakerConfig {
 	/** Number of failures before opening circuit */
-	failureThreshold: number
+	failureThreshold?: number
 	/** Number of successes in half-open state to close circuit */
-	successThreshold: number
+	successThreshold?: number
 	/** Time to wait before attempting to close circuit (half-open state) */
-	resetTimeoutMs: number
+	resetTimeoutMs?: number
 	/** Time window for counting failures */
-	failureWindowMs: number
+	failureWindowMs?: number
 }
 
 /**
@@ -108,11 +108,11 @@ export interface CircuitBreakerConfig {
  */
 export interface RequestQueueConfig {
 	/** Maximum number of requests in the queue */
-	maxSize: number
+	maxSize?: number
 	/** Default timeout for requests */
-	defaultTimeoutMs: number
+	defaultTimeoutMs?: number
 	/** Enable priority ordering */
-	enablePriority: boolean
+	enablePriority?: boolean
 }
 
 /**

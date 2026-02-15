@@ -100,7 +100,7 @@ describe("Foundation Integration Tests", () => {
 				registry,
 				messageRouter,
 				fileLockingService,
-				5, // max concurrent agents
+				{ maxConcurrentAgents: 5 }, // max concurrent agents
 			)
 
 			// Set the pool manager reference in message router
@@ -615,7 +615,7 @@ describe("Foundation Integration Tests", () => {
 				registry,
 				messageRouter,
 				fileLockingService,
-				5,
+				{ maxConcurrentAgents: 5 },
 			)
 			// @ts-expect-error - accessing private property for testing
 			messageRouter.agentPoolManager = agentPoolManager
