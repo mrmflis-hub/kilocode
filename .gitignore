@@ -23,7 +23,6 @@ bin-unpacked/
 
 # Docs
 docs/_site/
-P_DATA
 
 # Dotenv
 .env
@@ -36,6 +35,16 @@ logs
 
 # Vite development
 .vite-port
+
+# TypeScript
+*.tsbuildinfo
+
+# Storybook
+storybook-static/
+build-storybook.log
+
+# CLI local dev
+.kilocode-cli/
 
 # kilocode_change
 .history/

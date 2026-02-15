@@ -30,6 +30,7 @@ import {
 	// Server, // kilocode_change - no longer needed, merged into agentBehaviour
 	Users2,
 	ArrowLeft,
+	Settings2, // kilocode_change - for Agent Roles tab
 } from "lucide-react"
 
 // kilocode_change
@@ -83,6 +84,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import deepEqual from "fast-deep-equal" // kilocode_change
 import { GhostServiceSettingsView } from "../kilocode/settings/GhostServiceSettings" // kilocode_change
+import { AgentRolesSettings } from "./AgentRolesSettings" // kilocode_change
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { UISettings } from "./UISettings"
 import AgentBehaviourView from "../kilocode/settings/AgentBehaviourView" // kilocode_change - new combined view
@@ -115,6 +117,7 @@ export const sectionNames = [
 	"contextManagement",
 	"terminal",
 	"agentBehaviour", // kilocode_change - renamed from "modes" and merged with "mcp"
+	"agentRoles", // kilocode_change - new Agent Roles tab
 	// "modes",  // kilocode_change - now used inside AgentBehaviourView
 	// "mcp",  // kilocode_change - now used inside AgentBehaviourView
 	"prompts",
@@ -762,6 +765,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 		() => [
 			{ id: "providers", icon: Plug },
 			{ id: "agentBehaviour", icon: Users2 }, // kilocode_change - renamed from "modes" and merged with "mcp"
+			{ id: "agentRoles", icon: Settings2 }, // kilocode_change - new Agent Roles tab
 			{ id: "autoApprove", icon: CheckCheck },
 			// { id: "slashCommands", icon: SquareSlash }, // kilocode_change: needs work to be re-introduced
 			{ id: "browser", icon: SquareMousePointer },
@@ -1251,6 +1255,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 
 						{/* kilocode_change: Agent Behaviour Section - kilocode_change: merged modes and mcp */}
 						{activeTab === "agentBehaviour" && <AgentBehaviourView />}
+
+						{activeTab === "agentRoles" && <AgentRolesSettings />}
 
 						{/* kilocode_change: removed: Modes Section */}
 

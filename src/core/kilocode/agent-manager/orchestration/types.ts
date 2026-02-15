@@ -1,17 +1,41 @@
-import {
-	AgentSpawnConfig,
-	AgentInstance,
-	RoleDefinition,
-	RoleAssignment,
-	WorkflowState,
-	ArtifactType,
-} from "@kilocode/core-schemas/orchestration"
+// kilocode_change - new file
+// Re-export types from core-schemas for convenience
+// Note: Using 'export type' for compatibility with isolatedModules
 
-export {
+export type {
 	AgentSpawnConfig,
 	AgentInstance,
 	RoleDefinition,
 	RoleAssignment,
 	WorkflowState,
 	ArtifactType,
-}
+	ArtifactSummary,
+	ArtifactStatus,
+	MessageType,
+	AgentMessage,
+	AgentMessagePayload,
+	LockMode,
+	LockEventType,
+	FileLock,
+	LockConflict,
+	LockEvent,
+	AcquireLockResult,
+	LockStatusInfo,
+	RequestPriority,
+	CircuitState,
+	RateLimitInfo,
+	QueuedRequest,
+	RateLimitResult,
+	CircuitBreakerStatus,
+	RateLimitEventType,
+	RateLimitEvent,
+	CostEstimate,
+	BudgetStatus,
+	MultiAgentSession,
+	MultiAgentSessionStatus,
+	AgentReference,
+	ArtifactSummaryReference,
+	CreateMultiAgentSessionOptions,
+	MultiAgentSessionState,
+	HealthStatus,
+} from "@kilocode/core-schemas"

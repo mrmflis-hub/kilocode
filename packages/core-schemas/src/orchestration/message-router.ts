@@ -8,17 +8,20 @@ export const MessageTypeSchema = z.enum([
 	"status",
 	"error",
 	"control",
+	"notification",
 ])
 export type MessageType = z.infer<typeof MessageTypeSchema>
 
 export const RequestPayloadSchema = z.object({
 	task: z.string(),
-	taskType: z.enum(["analyze", "plan", "implement", "review", "document", "test"]),
+	taskType: z.enum(["analyze", "plan", "implement", "review", "document", "test", "execute"]),
 	context: z.object({
 		artifactIds: z.array(z.string()),
 		instructions: z.string(),
 		constraints: z.array(z.string()).optional(),
 	}),
+	_truncated: z.boolean().optional(),
+	_originalSize: z.number().optional(),
 })
 
 export const ResponsePayloadSchema = z.object({
@@ -26,6 +29,8 @@ export const ResponsePayloadSchema = z.object({
 	result: z.unknown().optional(),
 	error: z.string().optional(),
 	artifactId: z.string().optional(),
+	_truncated: z.boolean().optional(),
+	_originalSize: z.number().optional(),
 })
 
 export const ArtifactPayloadSchema = z.object({
@@ -54,6 +59,15 @@ export const ControlPayloadSchema = z.object({
 	reason: z.string().optional(),
 })
 
+export const NotificationPayloadSchema = z.object({
+	notificationType: z.string(),
+	eventType: z.string().optional(),
+	filePath: z.string().optional(),
+	agentId: z.string().optional(),
+	lockId: z.string().optional(),
+	data: z.unknown().optional(),
+})
+
 export const AgentMessagePayloadSchema = z.union([
 	RequestPayloadSchema,
 	ResponsePayloadSchema,
@@ -61,6 +75,7 @@ export const AgentMessagePayloadSchema = z.union([
 	StatusPayloadSchema,
 	ErrorPayloadSchema,
 	ControlPayloadSchema,
+	NotificationPayloadSchema,
 ])
 export type AgentMessagePayload = z.infer<typeof AgentMessagePayloadSchema>
 

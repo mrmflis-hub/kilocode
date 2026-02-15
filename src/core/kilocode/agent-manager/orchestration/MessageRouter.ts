@@ -1,7 +1,8 @@
 import type { AgentInstance } from "./types"
-import type { AgentMessage, MessageType } from "@kilocode/core-schemas/orchestration"
+import type { AgentMessage, MessageType } from "@kilocode/core-schemas"
 import { RuntimeProcessHandler } from "../RuntimeProcessHandler"
 import { AgentPoolManager } from "./AgentPoolManager"
+import { FileLockingService, type LockEvent } from "../../../../services/kilocode/file-locking"
 
 // Re-export types from core-schemas for convenience
 export type { AgentMessage, MessageType }
@@ -82,11 +83,49 @@ export class MessageRouter {
 	// IPC message size limit (Node.js default is ~1MB for IPC)
 	private readonly maxIPCMessageSize = 1024 * 1024 // 1MB
 
+	// File locking service reference
+	private fileLockingService: FileLockingService | null = null
+
 	constructor(
 		private readonly agentPoolManager: AgentPoolManager,
 		private readonly processHandler: RuntimeProcessHandler,
 	) {
 		this.startQueueProcessing()
+	}
+
+	/**
+	 * Set the file locking service reference
+	 * This is called after the FileLockingService is created
+	 */
+	setFileLockingService(service: FileLockingService): void {
+		this.fileLockingService = service
+		// Subscribe to lock events and broadcast them to agents
+		this.fileLockingService.subscribe(this.handleLockEvent.bind(this))
+	}
+
+	/**
+	 * Handle lock events from FileLockingService and broadcast to relevant agents
+	 */
+	private async handleLockEvent(event: LockEvent): Promise<void> {
+		// Create a message for the lock event
+		const lockMessage: AgentMessage = {
+			id: this.generateMessageId(),
+			type: "notification",
+			from: "file-locking-service",
+			to: "broadcast",
+			timestamp: Date.now(),
+			payload: {
+				notificationType: "file-lock-event",
+				eventType: event.type,
+				filePath: event.filePath,
+				agentId: event.agentId,
+				lockId: event.lockId,
+				data: event.data,
+			},
+		}
+
+		// Broadcast to all agents
+		await this.routeMessage(lockMessage)
 	}
 
 	/**
@@ -152,11 +191,7 @@ export class MessageRouter {
 	 * @returns Response message
 	 * @throws Error if timeout occurs or request fails
 	 */
-	async sendRequest(
-		to: string,
-		payload: AgentMessage["payload"],
-		timeoutMs: number = 30000,
-	): Promise<AgentMessage> {
+	async sendRequest(to: string, payload: AgentMessage["payload"], timeoutMs: number = 30000): Promise<AgentMessage> {
 		const correlationId = this.generateCorrelationId()
 		const from = "router" // Router acts as sender
 
@@ -512,5 +547,57 @@ export class MessageRouter {
 
 		// Clear log
 		this.messageLog = []
+
+		// Unsubscribe from file locking service
+		if (this.fileLockingService) {
+			this.fileLockingService.unsubscribe(this.handleLockEvent.bind(this))
+		}
+	}
+
+	/**
+	 * Send a file lock request on behalf of an agent
+	 * @param agentId - Agent ID requesting the lock
+	 * @param filePath - File path to lock
+	 * @param mode - Lock mode (read or write)
+	 * @param timeoutMs - Lock timeout
+	 * @returns Lock acquisition result
+	 */
+	async requestFileLock(agentId: string, filePath: string, mode: "read" | "write" = "write", timeoutMs?: number) {
+		if (!this.fileLockingService) {
+			throw new Error("FileLockingService not initialized")
+		}
+
+		return this.fileLockingService.acquireLock({
+			filePath,
+			agentId,
+			mode,
+			timeoutMs,
+		})
+	}
+
+	/**
+	 * Release a file lock
+	 * @param lockId - Lock ID to release
+	 * @returns Whether the lock was released
+	 */
+	releaseFileLock(lockId: string): boolean {
+		if (!this.fileLockingService) {
+			throw new Error("FileLockingService not initialized")
+		}
+
+		return this.fileLockingService.releaseLock(lockId)
+	}
+
+	/**
+	 * Get file lock status
+	 * @param filePath - File path to check
+	 * @returns Lock status information
+	 */
+	getFileLockStatus(filePath: string) {
+		if (!this.fileLockingService) {
+			throw new Error("FileLockingService not initialized")
+		}
+
+		return this.fileLockingService.getLockStatus(filePath)
 	}
 }

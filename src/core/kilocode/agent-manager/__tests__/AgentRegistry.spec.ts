@@ -487,3 +487,477 @@ describe("AgentRegistry", () => {
 		})
 	})
 })
+
+describe("AgentRegistry - Multi-Agent Sessions", () => {
+	let registry: AgentRegistry
+
+	beforeEach(() => {
+		vi.useFakeTimers()
+		vi.setSystemTime(new Date("2020-01-01T00:00:00.000Z"))
+		registry = new AgentRegistry()
+	})
+
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	describe("createMultiAgentSession", () => {
+		it("creates a new multi-agent session", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Build a new feature",
+			})
+
+			expect(session.sessionId).toBeDefined()
+			expect(session.userTask).toBe("Build a new feature")
+			expect(session.workspace).toBe("/test/workspace")
+			expect(session.status).toBe("initializing")
+			expect(session.workflowState).toBe("IDLE")
+			expect(session.agents).toHaveLength(0)
+			expect(session.artifactSummaries).toHaveLength(0)
+			expect(session.workflowHistory).toEqual(["IDLE"])
+		})
+
+		it("creates a session with custom ID when provided", () => {
+			const session = registry.createMultiAgentSession({
+				sessionId: "custom-session-id",
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			expect(session.sessionId).toBe("custom-session-id")
+		})
+
+		it("creates a session with metadata", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+				metadata: { priority: "high", tags: ["feature", "ui"] },
+			})
+
+			expect(session.metadata).toEqual({ priority: "high", tags: ["feature", "ui"] })
+		})
+
+		it("sets the created session as selected", () => {
+			registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "First session",
+			})
+
+			expect(registry.selectedMultiAgentSessionId).toBeDefined()
+		})
+	})
+
+	describe("getMultiAgentSession", () => {
+		it("returns undefined for non-existent session", () => {
+			const session = registry.getMultiAgentSession("non-existent")
+			expect(session).toBeUndefined()
+		})
+
+		it("returns the session when it exists", () => {
+			const created = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const retrieved = registry.getMultiAgentSession(created.sessionId)
+			expect(retrieved).toBeDefined()
+			expect(retrieved?.sessionId).toBe(created.sessionId)
+			expect(retrieved?.userTask).toBe("Test task")
+		})
+	})
+
+	describe("getMultiAgentSessions", () => {
+		it("returns empty array when no sessions exist", () => {
+			const sessions = registry.getMultiAgentSessions()
+			expect(sessions).toHaveLength(0)
+		})
+
+		it("returns all sessions sorted by creation time (most recent first)", () => {
+			registry.createMultiAgentSession({
+				workspace: "/workspace1",
+				userTask: "First task",
+			})
+			vi.advanceTimersByTime(1)
+			registry.createMultiAgentSession({
+				workspace: "/workspace2",
+				userTask: "Second task",
+			})
+
+			const sessions = registry.getMultiAgentSessions()
+			expect(sessions).toHaveLength(2)
+			expect(sessions[0].userTask).toBe("Second task")
+			expect(sessions[1].userTask).toBe("First task")
+		})
+	})
+
+	describe("addAgentToSession", () => {
+		it("adds an agent to a session", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const agent = registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			expect(agent).toBeDefined()
+			expect(agent?.agentId).toBe("agent-1")
+			expect(agent?.role).toBe("architect")
+			expect(agent?.status).toBe("spawning")
+			expect(agent?.spawnedAt).toBeDefined()
+		})
+
+		it("returns undefined for non-existent session", () => {
+			const agent = registry.addAgentToSession("non-existent", "agent-1", "architect")
+			expect(agent).toBeUndefined()
+		})
+
+		it("tracks agent-to-session mapping", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			expect(registry.getSessionForAgent("agent-1")).toBe(session.sessionId)
+		})
+
+		it("adds multiple agents to the same session", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+			registry.addAgentToSession(session.sessionId, "agent-2", "coder")
+			registry.addAgentToSession(session.sessionId, "agent-3", "sceptic")
+
+			const agents = registry.getAgentsForSession(session.sessionId)
+			expect(agents).toHaveLength(3)
+			expect(agents.map((a) => a.role)).toEqual(["architect", "coder", "sceptic"])
+		})
+	})
+
+	describe("updateAgentStatus", () => {
+		it("updates an agent's status", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			const agent = registry.updateAgentStatus("agent-1", "ready")
+
+			expect(agent?.status).toBe("ready")
+			expect(agent?.lastActivityAt).toBeDefined()
+		})
+
+		it("returns undefined for non-existent agent", () => {
+			const agent = registry.updateAgentStatus("non-existent", "ready")
+			expect(agent).toBeUndefined()
+		})
+	})
+
+	describe("updateAgentSessionId", () => {
+		it("updates an agent's session ID", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			const agent = registry.updateAgentSessionId("agent-1", "cli-session-123")
+
+			expect(agent?.sessionId).toBe("cli-session-123")
+		})
+	})
+
+	describe("removeAgentFromSession", () => {
+		it("removes an agent from a session", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			const result = registry.removeAgentFromSession("agent-1")
+
+			expect(result).toBe(true)
+			const agents = registry.getAgentsForSession(session.sessionId)
+			expect(agents).toHaveLength(0)
+			expect(registry.getSessionForAgent("agent-1")).toBeUndefined()
+		})
+
+		it("returns false for non-existent agent", () => {
+			const result = registry.removeAgentFromSession("non-existent")
+			expect(result).toBe(false)
+		})
+	})
+
+	describe("updateMultiAgentSessionWorkflowState", () => {
+		it("updates workflow state", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const updated = registry.updateMultiAgentSessionWorkflowState(session.sessionId, "PLANNING")
+
+			expect(updated?.workflowState).toBe("PLANNING")
+			expect(updated?.workflowHistory).toEqual(["IDLE", "PLANNING"])
+		})
+
+		it("updates step description when provided", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const updated = registry.updateMultiAgentSessionWorkflowState(
+				session.sessionId,
+				"PLANNING",
+				"Analyzing requirements...",
+			)
+
+			expect(updated?.currentStepDescription).toBe("Analyzing requirements...")
+		})
+
+		it("returns undefined for non-existent session", () => {
+			const updated = registry.updateMultiAgentSessionWorkflowState("non-existent", "PLANNING")
+			expect(updated).toBeUndefined()
+		})
+	})
+
+	describe("updateMultiAgentSessionStatus", () => {
+		it("updates session status", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const updated = registry.updateMultiAgentSessionStatus(session.sessionId, "running")
+
+			expect(updated?.status).toBe("running")
+		})
+
+		it("sets completedAt when status is completed", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const updated = registry.updateMultiAgentSessionStatus(session.sessionId, "completed")
+
+			expect(updated?.completedAt).toBeDefined()
+		})
+
+		it("sets error when status is error", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const updated = registry.updateMultiAgentSessionStatus(session.sessionId, "error", "Something went wrong")
+
+			expect(updated?.error).toBe("Something went wrong")
+			expect(updated?.completedAt).toBeDefined()
+		})
+	})
+
+	describe("addArtifactToSession", () => {
+		it("adds an artifact summary to a session", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			const artifact = registry.addArtifactToSession(session.sessionId, {
+				artifactId: "artifact-1",
+				artifactType: "plan",
+				summary: "Implementation plan for feature X",
+				status: "completed",
+				producerRole: "architect",
+			})
+
+			expect(artifact).toBeDefined()
+			expect(artifact?.artifactId).toBe("artifact-1")
+			expect(artifact?.artifactType).toBe("plan")
+			expect(artifact?.summary).toBe("Implementation plan for feature X")
+		})
+
+		it("returns undefined for non-existent session", () => {
+			const artifact = registry.addArtifactToSession("non-existent", {
+				artifactId: "artifact-1",
+				artifactType: "plan",
+				summary: "Test",
+				status: "completed",
+				producerRole: "architect",
+			})
+			expect(artifact).toBeUndefined()
+		})
+
+		it("allows adding multiple artifacts", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			registry.addArtifactToSession(session.sessionId, {
+				artifactId: "artifact-1",
+				artifactType: "plan",
+				summary: "Plan",
+				status: "completed",
+				producerRole: "architect",
+			})
+			registry.addArtifactToSession(session.sessionId, {
+				artifactId: "artifact-2",
+				artifactType: "code",
+				summary: "Code implementation",
+				status: "in-progress",
+				producerRole: "coder",
+			})
+
+			const summaries = registry.getArtifactSummariesForSession(session.sessionId)
+			expect(summaries).toHaveLength(2)
+		})
+	})
+
+	describe("removeMultiAgentSession", () => {
+		it("removes a session and cleans up agent mappings", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+			registry.addAgentToSession(session.sessionId, "agent-2", "coder")
+
+			const result = registry.removeMultiAgentSession(session.sessionId)
+
+			expect(result).toBe(true)
+			expect(registry.getMultiAgentSession(session.sessionId)).toBeUndefined()
+			expect(registry.getSessionForAgent("agent-1")).toBeUndefined()
+			expect(registry.getSessionForAgent("agent-2")).toBeUndefined()
+		})
+
+		it("returns false for non-existent session", () => {
+			const result = registry.removeMultiAgentSession("non-existent")
+			expect(result).toBe(false)
+		})
+
+		it("clears selected session when removed", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			registry.removeMultiAgentSession(session.sessionId)
+
+			expect(registry.selectedMultiAgentSessionId).toBeNull()
+		})
+	})
+
+	describe("getMultiAgentSessionState and restoreMultiAgentSessionState", () => {
+		it("exports session state for persistence", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.addAgentToSession(session.sessionId, "agent-1", "architect")
+
+			const state = registry.getMultiAgentSessionState()
+
+			expect(state.sessions).toHaveLength(1)
+			expect(state.sessions[0].agents).toHaveLength(1)
+		})
+
+		it("restores session state from persistence", () => {
+			// Create some sessions
+			const session1 = registry.createMultiAgentSession({
+				workspace: "/workspace1",
+				userTask: "Task 1",
+			})
+			registry.addAgentToSession(session1.sessionId, "agent-1", "architect")
+
+			// Get state
+			const state = registry.getMultiAgentSessionState()
+
+			// Create a new registry and restore
+			const newRegistry = new AgentRegistry()
+			newRegistry.restoreMultiAgentSessionState(state)
+
+			expect(newRegistry.getMultiAgentSessions()).toHaveLength(1)
+			// The agent mapping should be restored
+			const agentSessionId = newRegistry.getSessionForAgent("agent-1")
+			expect(agentSessionId).toBeDefined()
+			expect(newRegistry.getMultiAgentSession(agentSessionId!)).toBeDefined()
+		})
+	})
+
+	describe("hasRunningMultiAgentSessions", () => {
+		it("returns false when no sessions are running", () => {
+			expect(registry.hasRunningMultiAgentSessions()).toBe(false)
+		})
+
+		it("returns true when a session is initializing", () => {
+			registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+
+			expect(registry.hasRunningMultiAgentSessions()).toBe(true)
+		})
+
+		it("returns true when a session is running", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.updateMultiAgentSessionStatus(session.sessionId, "running")
+
+			expect(registry.hasRunningMultiAgentSessions()).toBe(true)
+		})
+
+		it("returns false when all sessions are completed", () => {
+			const session = registry.createMultiAgentSession({
+				workspace: "/test/workspace",
+				userTask: "Test task",
+			})
+			registry.updateMultiAgentSessionStatus(session.sessionId, "completed")
+
+			expect(registry.hasRunningMultiAgentSessions()).toBe(false)
+		})
+	})
+
+	describe("pruning", () => {
+		it("prunes oldest completed multi-agent sessions when over capacity", () => {
+			// Create 50 sessions first (at the limit)
+			const created: string[] = []
+			for (let i = 0; i < 50; i++) {
+				vi.advanceTimersByTime(1)
+				const session = registry.createMultiAgentSession({
+					workspace: `/workspace${i}`,
+					userTask: `Task ${i}`,
+				})
+				created.push(session.sessionId)
+			}
+
+			// Mark all as completed except the last one
+			for (let i = 0; i < 49; i++) {
+				registry.updateMultiAgentSessionStatus(created[i], "completed")
+			}
+
+			// Create one more session to trigger pruning
+			vi.advanceTimersByTime(1)
+			registry.createMultiAgentSession({
+				workspace: `/workspace-new`,
+				userTask: `New Task`,
+			})
+
+			// The oldest completed session should be pruned (session 0)
+			const sessions = registry.getMultiAgentSessions()
+			expect(sessions).toHaveLength(50)
+			expect(sessions.map((s) => s.userTask)).not.toContain("Task 0")
+		})
+	})
+})

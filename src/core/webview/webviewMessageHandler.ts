@@ -108,6 +108,7 @@ import { setPendingTodoList } from "../tools/UpdateTodoListTool"
 import { ManagedIndexer } from "../../services/code-index/managed/ManagedIndexer"
 import { SessionManager } from "../../shared/kilocode/cli-sessions/core/SessionManager" // kilocode_change
 import { getEffectiveTelemetrySetting } from "../kilocode/wrapper"
+import { handleOrchestrationMessage } from "./orchestrationMessageHandler" // kilocode_change
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -487,6 +488,34 @@ export const webviewMessageHandler = async (
 			await handleEditOperation(messageTs, editedContent, images)
 		}
 	}
+
+	// kilocode_change start: Delegate orchestration messages to dedicated handler
+	const orchestrationTypes = [
+		"getOrchestrationConfig",
+		"saveOrchestrationConfig",
+		"getRoleDefinitions",
+		"validateOrchestrationConfig",
+		"getProviderProfiles",
+		"addProviderProfile",
+		"updateProviderProfile",
+		"deleteProviderProfile",
+		"getWorkflowStatus",
+		"getAgentStatuses",
+		"pauseWorkflow",
+		"resumeWorkflow",
+		"cancelWorkflow",
+		"retryWorkflow",
+		"pauseAgent",
+		"resumeAgent",
+		"terminateAgent",
+		"restartAgent",
+		"viewAgentDetails",
+	]
+	if (orchestrationTypes.includes(message.type)) {
+		const handled = await handleOrchestrationMessage(provider, message as any)
+		if (handled) return
+	}
+	// kilocode_change end
 
 	switch (message.type) {
 		case "webviewDidLaunch":
